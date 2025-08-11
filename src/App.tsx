@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react"
+import { type ChangeEvent } from "react"
 import reactLogo from "./assets/react.svg"
 import viteLogo from "/vite.svg"
 import "./App.css"
@@ -11,7 +11,7 @@ function App() {
             return;
         }
 
-        const saveFile = event.target.files[0];
+        // const saveFile = event.target.files[0];
     };
 
     return (
