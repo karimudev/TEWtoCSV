@@ -171,7 +171,7 @@ roles AS (
     WHERE rwc.ContractUID IS NULL
 ),
 belts AS (
-    SELECT rwc.WorkerUID, GROUP_CONCAT(b.Name, CHAR(10)) AS Belts
+    SELECT rwc.WorkerUID, GROUP_CONCAT(b.Name, ', ') AS Belts
     FROM relevantWorkersAndContracts rwc
     JOIN tblBelt b
     ON (rwc.WorkerUID = b.Holder1 OR rwc.WorkerUID = b.Holder2 OR rwc.WorkerUID = b.Holder3)
@@ -190,7 +190,7 @@ teams AS (
     WHERE (t.Active = 1 AND t.Type < 4 AND c1.FedUID = c2.FedUID AND cr.Rank < 3)
 ),
 workerTeams AS (
-    SELECT w.UID, GROUP_CONCAT(t.Name, CHAR(10)) AS Teams
+    SELECT w.UID, GROUP_CONCAT(t.Name, ', ') AS Teams
     FROM tblWorker w
     JOIN teams t
     ON (w.UID = t.Worker1UID OR w.UID = t.Worker2UID)
@@ -204,7 +204,7 @@ stables AS (
     WHERE (s.Active = 1 AND cr.Rank < 3)
 ),
 workerStables AS (
-    SELECT w.UID, GROUP_CONCAT(s.Name, CHAR(10)) AS Stables
+    SELECT w.UID, GROUP_CONCAT(s.Name, ', ') AS Stables
     FROM tblWorker w
     JOIN stables s
     ON w.UID IN (
@@ -230,7 +230,7 @@ workerStables AS (
     GROUP BY w.UID
 ),
 workerManagers AS (
-    SELECT c1.WorkerUID, GROUP_CONCAT(c2.Name, CHAR(10)) AS ManagerNames
+    SELECT c1.WorkerUID, GROUP_CONCAT(c2.Name, ', ') AS ManagerNames
     FROM tblContract c1
     JOIN tblContract c2
     ON c1.Manager = c2.WorkerUID
@@ -267,14 +267,13 @@ SELECT
         ELSE w.Name
     END AS Name,
     CASE
-        WHEN w.Gender IN (1, 2, 4) THEN "Male"
-        WHEN w.Gender IN (5, 6, 8) THEN "Female"
-        ELSE "Other"
+        WHEN w.Gender IN (1, 2, 4) THEN 'Male'
+        WHEN w.Gender IN (5, 6, 8) THEN 'Female'
+        ELSE 'Other'
     END AS Gender,
-    CAST(strftime("%Y.%m%d", gi.CurrentGameDate) - strftime("%Y.%m%d", w.Birthday) AS int) AS Age,
+    CAST(strftime('%Y.%m%d', gi.CurrentGameDate) - strftime('%Y.%m%d', w.Birthday) AS int) AS Age,
     w.WorkerHeight AS Height,
-    -- TODO: CAST(100 * (((w.WorkerHeight + 35) / 12) * 0.3048 + MOD(w.WorkerHeight + 35, 12) * 0.0254) AS int) AS Height,
-    CAST(w.WorkerWeight * 0.453 AS int) AS Weight,
+    ROUND(w.WorkerWeight * 0.453) AS Weight,
 
     -- Worker Ratings
     wp.Popularity,
@@ -319,43 +318,49 @@ SELECT
 
     -- Perception
     CASE 
-        WHEN c.Perception = 5 THEN "Unimportant"
-        WHEN c.Perception = 4 THEN "Recognisable"
-        WHEN c.Perception = 3 THEN "Well Known"
-        WHEN c.Perception = 2 THEN "Star"
-        WHEN c.Perception = 1 THEN "Major Star"
+        WHEN c.Perception = 5 THEN 'Unimportant'
+        WHEN c.Perception = 4 THEN 'Recognisable'
+        WHEN c.Perception = 3 THEN 'Well Known'
+        WHEN c.Perception = 2 THEN 'Star'
+        WHEN c.Perception = 1 THEN 'Major Star'
         ELSE NULL
     END AS Perception,
-    6 - c.Perception AS PerceptionIdx,
+    CASE
+        WHEN c.Perception < 6 THEN 6 - c.Perception
+        ELSE NULL
+    END AS PerceptionIdx,
     CASE 
-        WHEN m.MomentumIdx =  1 THEN "Ice Cold"
-        WHEN m.MomentumIdx =  2 THEN "Very Cold"
-        WHEN m.MomentumIdx =  3 THEN "Cold"
-        WHEN m.MomentumIdx =  4 THEN "Chilly"
-        WHEN m.MomentumIdx =  5 THEN "Cooled"
-        WHEN m.MomentumIdx =  6 THEN "Neutral"
-        WHEN m.MomentumIdx =  7 THEN "Warm"
-        WHEN m.MomentumIdx =  8 THEN "Very Warm"
-        WHEN m.MomentumIdx =  9 THEN "Hot"
-        WHEN m.MomentumIdx = 10 THEN "Very Hot"
-        WHEN m.MomentumIdx = 11 THEN "Red Hot"
-        WHEN m.MomentumIdx = 12 THEN "White Hot"
+        WHEN m.MomentumIdx =  1 THEN 'Ice Cold'
+        WHEN m.MomentumIdx =  2 THEN 'Very Cold'
+        WHEN m.MomentumIdx =  3 THEN 'Cold'
+        WHEN m.MomentumIdx =  4 THEN 'Chilly'
+        WHEN m.MomentumIdx =  5 THEN 'Cooled'
+        WHEN m.MomentumIdx =  6 THEN 'Neutral'
+        WHEN m.MomentumIdx =  7 THEN 'Warm'
+        WHEN m.MomentumIdx =  8 THEN 'Very Warm'
+        WHEN m.MomentumIdx =  9 THEN 'Hot'
+        WHEN m.MomentumIdx = 10 THEN 'Very Hot'
+        WHEN m.MomentumIdx = 11 THEN 'Red Hot'
+        WHEN m.MomentumIdx = 12 THEN 'White Hot'
         ELSE NULL
     END AS Momentum,
     m.MomentumIdx,
 
-
     -- Contract
     f.Initials AS Company,
-    CASE WHEN cr.Rank < 3 AND fb.Brand IS NOT NULL THEN fb.Name ELSE "" END AS Brand,
-    CASE WHEN c.Daysleft < 0 THEN NULL ELSE DATE(gi.CurrentGameDate, "+" || c.Daysleft || " days") END AS ExpiryDate,
+    CASE WHEN cr.Rank < 3 AND fb.Brand IS NOT NULL THEN fb.Name ELSE '' END AS Brand,
+    CASE WHEN c.Daysleft < 0 THEN NULL ELSE DATE(gi.CurrentGameDate, '+' || c.Daysleft || ' days') END AS ExpiryDate,
     c.ExclusiveContract,
     c.WrittenContract,
     c.TouringContract,
     c.OnLoan,
     c.Developmental,
     c.Amount,
-    CASE WHEN c.PaidMonthly THEN "Month" ELSE "Show" END AS Per,
+    CASE 
+        WHEN c.PaidMonthly = 0 THEN 'Show' 
+        WHEN c.PaidMonthly = 1 THEN 'Month' 
+        ELSE ''
+    END AS Per,
 
     -- Role
     (r.Wrestler OR r.Occasional) AS InRing,
@@ -371,9 +376,9 @@ SELECT
     -- Character info
     CASE
         WHEN c.Face = 1 THEN 
-        CASE WHEN c.Turn_Change = -1 THEN 'Face' ELSE 'Heel*' END
+        CASE WHEN c.Turn_Change = -1 THEN 'Face' ELSE 'Face (turning)' END
         WHEN c.Face = 0 THEN
-        CASE WHEN c.Turn_Change = -1 THEN 'Heel' ELSE 'Face*' END
+        CASE WHEN c.Turn_Change = -1 THEN 'Heel' ELSE 'Heel (turning)' END
     END AS Side,
     wt.Teams,
     ws.Stables,
@@ -381,39 +386,42 @@ SELECT
     b.Belts,
     c.PlasterCaster_Gimmick AS Gimmick,
     CASE
-        WHEN gr.RatingIdx = 0 THEN "Awful"
-        WHEN gr.RatingIdx = 1 THEN "Poor"
-        WHEN gr.RatingIdx = 2 THEN "Adequate"
-        WHEN gr.RatingIdx = 3 THEN "Very Good"
-        WHEN gr.RatingIdx = 4 THEN "Great"
-        WHEN gr.RatingIdx = 5 THEN "Legendary"
+        WHEN gr.RatingIdx = 0 THEN 'Awful'
+        WHEN gr.RatingIdx = 1 THEN 'Poor'
+        WHEN gr.RatingIdx = 2 THEN 'Adequate'
+        WHEN gr.RatingIdx = 3 THEN 'Very Good'
+        WHEN gr.RatingIdx = 4 THEN 'Great'
+        WHEN gr.RatingIdx = 5 THEN 'Legendary'
         ELSE NULL
     END AS GimmickRating,
-    gr.RatingIdx,
+    CASE 
+        WHEN gr.RatingIdx >= 0 THEN gr.RatingIdx
+        ELSE NULL
+    END AS RatingIdx,
 
     -- Availability
     CASE
         WHEN i.UID THEN i.Name
-        WHEN aw.Reason =  -1 THEN "Recovering from Overdose"
-        WHEN aw.Reason =  -2 THEN "Filming"
-        WHEN aw.Reason =  -3 THEN "In Prison"
-        WHEN aw.Reason =  -4 THEN "In Rehab"
-        WHEN aw.Reason =  -5 THEN "Suspended"
-        WHEN aw.Reason =  -6 THEN "Missed Show"
-        WHEN aw.Reason =  -7 THEN "On Vacation"
-        WHEN aw.Reason =  -8 THEN "Touring with Band"
-        WHEN aw.Reason =  -9 THEN "Maternity Leave"
-        WHEN aw.Reason = -10 THEN "Engaged in MMA training"
-        WHEN aw.Reason = -11 THEN "Sent Home"
-        WHEN aw.Reason = -12 THEN "Legal Reasons"
-        WHEN aw.Reason = -13 THEN "Personal Reasons"
-        WHEN aw.Reason = -14 THEN "On Hiatus"
-        WHEN aw.Reason = -15 THEN "In Politics"
-        WHEN aw.Reason = -16 THEN "Given Night Off"
-        WHEN aw.Reason = -17 THEN "Stranded"
+        WHEN aw.Reason =  -1 THEN 'Recovering from Overdose'
+        WHEN aw.Reason =  -2 THEN 'Filming'
+        WHEN aw.Reason =  -3 THEN 'In Prison'
+        WHEN aw.Reason =  -4 THEN 'In Rehab'
+        WHEN aw.Reason =  -5 THEN 'Suspended'
+        WHEN aw.Reason =  -6 THEN 'Missed Show'
+        WHEN aw.Reason =  -7 THEN 'On Vacation'
+        WHEN aw.Reason =  -8 THEN 'Touring with Band'
+        WHEN aw.Reason =  -9 THEN 'Maternity Leave'
+        WHEN aw.Reason = -10 THEN 'Engaged in MMA training'
+        WHEN aw.Reason = -11 THEN 'Sent Home'
+        WHEN aw.Reason = -12 THEN 'Legal Reasons'
+        WHEN aw.Reason = -13 THEN 'Personal Reasons'
+        WHEN aw.Reason = -14 THEN 'On Hiatus'
+        WHEN aw.Reason = -15 THEN 'In Politics'
+        WHEN aw.Reason = -16 THEN 'Given Night Off'
+        WHEN aw.Reason = -17 THEN 'Stranded'
         ELSE NULL
     END AS AbsenceReason,
-    DATE(gi.CurrentGameDate, "+" || aw.DaysLeft || " days") AS ReturnDate,
+    DATE(gi.CurrentGameDate, '+' || aw.DaysLeft || ' days') AS ReturnDate,
 
     -- Misc
     fl.Initials AS Loyalty,

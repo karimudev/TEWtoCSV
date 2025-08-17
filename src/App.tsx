@@ -1,6 +1,6 @@
 import "./App.css";
 import MDBReader, { ColumnTypes } from "mdb-reader";
-import initSqlJs, { type Database } from "sql.js";
+import initSqlJs, { type Database, type QueryExecResult } from "sql.js";
 import query from "./assets/query.sql?raw";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
@@ -33,18 +33,19 @@ function App() {
     };
 
     const handleSavefileData = async (buffer: ArrayBuffer) => {
-        const SQL = await initSqlJs({ locateFile: () => wasm });
-        const db = new SQL.Database();
-
-        convertMDBtoSQL(buffer, db);
-        const queryOutput = runQuery(db);
+        const db = await convertMDBtoSQL(buffer);
+        const queryResult = runQuery(db);
+        const csvString = formatResultToCsv(queryResult);
+        downloadCsv(csvString);
 
         setStatus("Done.");
     };
 
-    const convertMDBtoSQL =  (buffer: ArrayBuffer, db: Database) => {
+    const convertMDBtoSQL =  async (buffer: ArrayBuffer) => {
         setStatus("Converting MDB to SQL database...")
         const mdbReader = new MDBReader(Buffer.from(buffer));
+        const SQL = await initSqlJs({ locateFile: () => wasm });
+        const db = new SQL.Database();
 
         const tablesUsedInQuery = new Set([
             "tblAway",
@@ -118,11 +119,162 @@ function App() {
                     db.run(`INSERT INTO "${tableName}" VALUES (${values})`);
                 });
             });
+
+        return db;
     }
 
     const runQuery = (db: Database) => {
         setStatus("Extracting data...")
-        console.log(db.exec(query));
+
+        return db.exec(query)[0];
+    };
+
+    const formatResultToCsv = (queryResult: QueryExecResult) => {
+        setStatus("Formatting data...")
+
+        const avg = (...nums: number[]): number => {
+            return nums.reduce((acc, v) => acc + v, 0) / nums.length
+        }
+
+        return queryResult.values.map(row => {
+            const csvRow = []
+
+            // Personal info
+            const name = row.shift() as string;
+            const gender = row.shift() as string;
+            const age = row.shift() as number;
+            const gameHeight = row.shift() as number;
+            const weightInKgs = row.shift() as number;
+
+            const feet = Math.floor((gameHeight + 35) / 12);
+            const inches = (gameHeight + 35) % 12
+            const heightInCms = Math.round(feet * 30.48 + inches * 2.45);
+
+            csvRow.push(name, gender, age, heightInCms, weightInKgs);
+
+            // Popularity and skills
+            const popularity = row.shift() as number;
+            csvRow.push(popularity)
+
+            const brawling = row.shift() as number;
+            const puroresu = row.shift() as number;
+            const hardcore = row.shift() as number;
+            const technical = row.shift() as number;
+            const aerial = row.shift() as number;
+            const flashiness = row.shift() as number;
+            const primaryMax = Math.max(brawling, puroresu, technical, aerial);
+            csvRow.push(primaryMax, brawling, puroresu, hardcore, technical, aerial, flashiness);
+
+            const psychology = row.shift() as number;
+            const experience = row.shift() as number;
+            const respect = row.shift() as number;
+            const reputation = row.shift() as number;
+            const mentalAvg = 4 * avg(psychology * 0.97, experience * 0.01, respect * 0.01, reputation * 0.01);
+            csvRow.push(mentalAvg, psychology, experience, respect, reputation);
+
+            const charisma = row.shift() as number;
+            const microphone = row.shift() as number;
+            const acting = row.shift() as number;
+            const starQuality = row.shift() as number;
+            const sexAppeal = row.shift() as number;
+            const menace = row.shift() as number;
+            const entertainmentMax = Math.max(charisma, microphone, acting, menace);
+            csvRow.push(entertainmentMax, charisma, microphone, acting, starQuality, sexAppeal, menace);
+
+            const basics = row.shift() as number;
+            const selling = row.shift() as number;
+            const consistency = row.shift() as number;
+            const safety = row.shift() as number;
+            const stamina = row.shift() as number;
+            const athleticism = row.shift() as number;
+            const power = row.shift() as number;
+            const toughness = row.shift() as number;
+            const resilience = row.shift() as number;
+            const fundamentalsAvg = avg(basics, selling, consistency, safety, stamina);
+            csvRow.push(fundamentalsAvg, basics, selling, consistency, safety, stamina, athleticism, power, toughness, resilience);
+
+            const playByPlay = row.shift() as number;
+            const colourSkill = row.shift() as number;
+            const refereeing = row.shift() as number;
+            const businessRep = row.shift() as number;
+            const bookingRep = row.shift() as number;
+            const bookingSkill = row.shift() as number;
+            const othersMax = Math.max(playByPlay, colourSkill, refereeing, businessRep, bookingRep, bookingSkill);
+            csvRow.push(othersMax, playByPlay, colourSkill, refereeing, businessRep, bookingRep, bookingSkill);
+
+            // Perception
+            const perception = row.shift() as string;
+            const perceptionIdx = row.shift()  as number;
+            const momentum = row.shift() as string;
+            const momentumIdx = row.shift()  as number;
+            csvRow.push(perception, perceptionIdx, momentum, momentumIdx);
+
+            // Contract
+            const company = row.shift() as string;
+            const brand = row.shift() as string;
+            const expiryDate = row.shift() as string;
+            const exclusiveContract = row.shift() as number;
+            const writtenContract = row.shift() as number;
+            const touringContract = row.shift() as number;
+            const onLoan = row.shift() as number;
+            const developmental = row.shift() as number;
+            const amount = row.shift() as number;
+            const per = row.shift() as string;
+            csvRow.push(company, brand, expiryDate, exclusiveContract, writtenContract, touringContract, onLoan, developmental, amount, per);
+
+            // Role
+            const inRing = row.shift() as number;
+            const wrestler = row.shift() as number;
+            const occasional = row.shift() as number;
+            const referee = row.shift() as number;
+            const announcer = row.shift() as number;
+            const colour = row.shift() as number;
+            const manager = row.shift() as number;
+            const personality = row.shift() as number;
+            const roadAgent = row.shift() as number;
+            csvRow.push(inRing, wrestler, occasional, referee, announcer, colour, manager, personality, roadAgent);
+
+            // Character info
+            const side = row.shift() as string;
+            const teams = row.shift() as string;
+            const stables = row.shift() as string;
+            const managers = row.shift() as string;
+            const belts = row.shift() as string;
+            const gimmick = row.shift() as string;
+            const gimmickRating = row.shift() as string;
+            const ratingIdx = row.shift() as number;
+            csvRow.push(side, teams, stables, managers, belts, gimmick, gimmickRating, ratingIdx);
+
+            // Availability
+            const absenceReason = row.shift() as string;
+            const returnDate = row.shift() as string;
+            csvRow.push(absenceReason, returnDate);
+
+            // Misc
+            const loyalty = row.shift() as string;
+            const debutDate = row.shift() as string;
+            csvRow.push(loyalty, debutDate);
+
+            const mappedCsvRow = csvRow.map(value => `"${value === null ? "" : value}"`);
+            return mappedCsvRow;
+        }).join('\n');
+    };
+
+    const downloadCsv = (csvString: string) => {
+        const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+
+        const filename = "TEWData.csv";
+        link.setAttribute("download", filename);
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(url);
     };
 
     return (
